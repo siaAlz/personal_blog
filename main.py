@@ -1,46 +1,31 @@
-import datetime
-import json
-import os
+from typing import Annotated
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Path, status, HTTPException
+from models import ArticleModel
+from utils import load_articles, load_article, create_article
 
 app = FastAPI()
 
 
-# Creating DB
-def initiate_db():
-    seed: list = [
-        {
-            "id": 0,
-            "author": "sia",
-            "title": "Welcome",
-            "content": "Hi this is my first app.",
-            "created_at": "2026-06-09T19:22:03.614869",
-        },
-    ]
-
-    os.makedirs("db", exist_ok=True)
-    db_path = os.path.join(os.getcwd(), "db", "db.json")
-    if not os.path.exists(os.path.join(db_path, "db.json")):
-        with open(db_path, mode="w", encoding="utf-8") as file:
-            json.dump(seed, file, indent="")
-
-    return db_path
-
-
-db = initiate_db()
-
-
+# Routes
 @app.get("/")
 async def home():
     return {"message": "Blog App"}
 
 
-@app.get("/articles")
-async def get_articles():
+@app.get("/articles", response_model=list[ArticleModel])
+async def read_articles():
+    return load_articles()
 
-    with open(db, mode="r", encoding="utf-8") as file:
-        articles = json.load(file)
-        return articles
 
-    # Returns All Articles
+@app.get("/articles/{article_id}", response_model=ArticleModel)
+async def read_article(article_id: Annotated[int, Path(ge=1)]):
+    article = load_article(article_id)
+    if article is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "article not found.")
+    return article
+
+
+@app.post("/articles/create", status_code=status.HTTP_201_CREATED)
+async def post_article(article: ArticleModel):
+    return create_article(article)

@@ -1,9 +1,11 @@
-# Personal Blog App with FastAPI & RestAPI 
+# Personal Blog App with FastAPI & RestAPI
 
-## Features:
+## Features
+
 * Guest Section — A list of pages that can be accessed by anyone:
 
     1. Home Endpoint: This endpoint will return the list of articles published on the blog.
+
     2. Article Endpoint: This endpoint will return the content of the article along with the date of publication.
 
 * Admin Section — are the pages that only you can access to publish, edit, or delete articles.
