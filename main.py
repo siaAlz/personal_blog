@@ -2,20 +2,20 @@ from typing import Annotated
 
 from fastapi import FastAPI, Path, Query, status, HTTPException, Depends
 
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import OAuth2PasswordRequestForm
 
-from models import ArticleBase, ArticleOut
+from models import ArticleBase, ArticleOut, UserIn
 from utils import (
     load_articles,
     load_article,
     create_article,
     load_articles_by_tag,
     upload_article,
+    get_user,
 )
+from dependencies import oauth2_scheme, get_urrent_user, get_current_active_user
 
 app = FastAPI()
-
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
 # Routes
@@ -33,7 +33,10 @@ async def home(token: Annotated["str", Depends(oauth2_scheme)]):
     tags=["public"],
     summary="Get all articles / by tags(optional)",
 )
-async def read_articles_by_tag(tag: Annotated[str | None, Query(min_length=3)] = None):
+async def read_articles_by_tag(
+    tag: Annotated[str | None, Query(min_length=3)] = None,
+    _: Annotated[UserIn | None, Depends(get_urrent_user)] = None,
+):
     if tag is None:
         return load_articles()
     articles = load_articles_by_tag(tag)
@@ -59,7 +62,10 @@ async def read_article(article_id: Annotated[int, Path(ge=1)]):
     tags=["admin"],
     summary="Create Article.",
 )
-async def post_article(article: ArticleBase):
+async def post_article(
+    article: ArticleBase,
+    _: Annotated[UserIn | None, Depends(get_current_active_user)] = None,
+):
     return create_article(article)
 
 
@@ -78,3 +84,18 @@ async def update_article(
     if uploaded_article is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "article not found.")
     return uploaded_article
+
+
+@app.post("/token")
+async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
+    user_dict = get_user(form_data.username)
+    if not user_dict:
+        raise HTTPException(status_code=400, detail="Incorrect username or password.")
+    user = UserIn(**user_dict)
+    hashed_password = form_data.password  # Most hash it!
+    if not user.password == hashed_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Incorrect username or password.",
+        )
+    return {"access_token": user.username, "token_type": "bearer"}

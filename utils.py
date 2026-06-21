@@ -1,16 +1,13 @@
-import json
-
-from models import ArticleBase, ArticleOut
-from db import initiate_db
+from models import ArticleBase, ArticleOut, UserIn
+from db import initiate_db, load_db, save_db
 
 # DB
 DB_PATH = initiate_db()
+db = load_db(DB_PATH)
 
 
 def load_articles() -> list[ArticleOut]:
-    with open(DB_PATH, mode="r", encoding="utf-8") as file:
-        articles = json.load(file)
-
+    articles = db["Articles"]
     return [ArticleOut(**a) for a in articles]
 
 
@@ -32,9 +29,8 @@ def create_article(article: ArticleBase):
     )
 
     articles.append(new_article)
-    with open(DB_PATH, mode="w", encoding="utf-8") as db:
-        json.dump([a.model_dump() for a in articles], db)
-
+    db["Articles"] = [a.model_dump() for a in articles]
+    save_db(db, DB_PATH)
     return new_article
 
 
@@ -56,12 +52,18 @@ def upload_article(article_id: int, updated_article: ArticleBase) -> ArticleOut 
                 created_at=articles[i].created_at,
             )
 
-            with open(DB_PATH, mode="w", encoding="utf-8") as db:
-                json.dump(
-                    [a.model_dump() for a in articles],
-                    db,
-                    indent=4,
-                )
-
+            db["Articles"] = [a.model_dump() for a in articles]
+            save_db(db, DB_PATH)
             return articles[i]
     return None
+
+
+def get_user(username):
+    users = db["Users"]
+    for u in users:
+        if u["username"] == username:
+            return u
+    return None
+
+
+# Security
