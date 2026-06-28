@@ -7,13 +7,13 @@ def initiate_db():
         "Articles": [
             {
                 "id": 1,
-                "author": "sia",
+                "author": "siavash",
                 "title": "Welcome",
                 "content": "Hi this is my first app.",
                 "created_at": "2026-06-09T19:22:03.614869",
             },
         ],
-        "Users": [{"username": "siavash", "password": "siavash", "is_active": False}],
+        "Users": [],
     }
 
     os.makedirs("db", exist_ok=True)

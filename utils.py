@@ -1,5 +1,13 @@
-from models import ArticleBase, ArticleOut, UserIn
+from datetime import datetime, timedelta, timezone
+
+from dotenv import load_dotenv
+from pwdlib import PasswordHash
+
+from models import ArticleBase, ArticleOut, UserDb, UserIn
 from db import initiate_db, load_db, save_db
+
+import os
+import jwt
 
 # DB
 DB_PATH = initiate_db()
@@ -58,6 +66,14 @@ def upload_article(article_id: int, updated_article: ArticleBase) -> ArticleOut 
     return None
 
 
+# Users
+def create_user(user: UserIn):
+    hashed_password = get_password_hash(user.password)
+    user_db = UserDb(**user.model_dump(), hashed_password=hashed_password)
+    db["Users"].append(user_db.model_dump())
+    save_db(db, DB_PATH)
+
+
 def get_user(username):
     users = db["Users"]
     for u in users:
@@ -67,3 +83,49 @@ def get_user(username):
 
 
 # Security
+load_dotenv()
+
+password_hash = PasswordHash.recommended()
+
+DUMMY_HASH = password_hash.hash("dummypassword")
+
+
+def get_password_hash(password):
+    return password_hash.hash(password)
+
+
+def verify_password(plain_password, hashed_password):
+    return password_hash.verify(plain_password, hashed_password)
+
+
+def authenticate_user(username: str, password: str):
+    user_dict = get_user(username)
+    if not user_dict:
+        verify_password(password, DUMMY_HASH)
+        return False
+
+    user = UserDb(**user_dict)
+
+    # Most hash it!
+    if not verify_password(password, user.hashed_password):
+        return False
+
+    return user
+
+
+# Token
+
+SECRET_KEY = os.getenv("SECRET_KEY")
+ALGORITHM = os.getenv("ALGORITHM")
+
+
+def create_access_token(data: dict, expires_delta: timedelta | None = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.now(timezone.utc) + expires_delta
+    else:
+        expire = datetime.now(timezone.utc) + timedelta(minutes=15)
+
+    to_encode.update({"exp": expire.timestamp()})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, ALGORITHM)
+    return encoded_jwt

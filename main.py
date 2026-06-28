@@ -1,11 +1,16 @@
+from datetime import timedelta
 from typing import Annotated
+
 
 from fastapi import FastAPI, Path, Query, status, HTTPException, Depends
 
 from fastapi.security import OAuth2PasswordRequestForm
 
-from models import ArticleBase, ArticleOut, UserIn
+from models import ArticleBase, ArticleOut, Token, UserBase, UserIn
 from utils import (
+    authenticate_user,
+    create_access_token,
+    create_user,
     load_articles,
     load_article,
     create_article,
@@ -14,6 +19,9 @@ from utils import (
     get_user,
 )
 from dependencies import oauth2_scheme, get_urrent_user, get_current_active_user
+
+# ACCESS_TOKEN_EXPIRE_MINUTES = os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES")
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 app = FastAPI()
 
@@ -35,7 +43,6 @@ async def home(token: Annotated["str", Depends(oauth2_scheme)]):
 )
 async def read_articles_by_tag(
     tag: Annotated[str | None, Query(min_length=3)] = None,
-    _: Annotated[UserIn | None, Depends(get_urrent_user)] = None,
 ):
     if tag is None:
         return load_articles()
@@ -64,7 +71,7 @@ async def read_article(article_id: Annotated[int, Path(ge=1)]):
 )
 async def post_article(
     article: ArticleBase,
-    _: Annotated[UserIn | None, Depends(get_current_active_user)] = None,
+    _: Annotated[UserBase | None, Depends(get_current_active_user)] = None,
 ):
     return create_article(article)
 
@@ -77,7 +84,9 @@ async def post_article(
     summary="Update article.",
 )
 async def update_article(
-    article_id: Annotated[int, Path(ge=1)], updated_article: ArticleBase
+    article_id: Annotated[int, Path(ge=1)],
+    updated_article: ArticleBase,
+    _: Annotated[UserBase | None, Depends(get_urrent_user)] = None,
 ):
 
     uploaded_article = upload_article(article_id, updated_article)
@@ -86,16 +95,23 @@ async def update_article(
     return uploaded_article
 
 
-@app.post("/token")
-async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
-    user_dict = get_user(form_data.username)
-    if not user_dict:
-        raise HTTPException(status_code=400, detail="Incorrect username or password.")
-    user = UserIn(**user_dict)
-    hashed_password = form_data.password  # Most hash it!
-    if not user.password == hashed_password:
+@app.post("/users/signup", status_code=status.HTTP_201_CREATED, tags=["public"])
+async def signup_user(user: UserIn):
+    # What if User already exists or is logged?
+    return create_user(user)
+
+
+@app.post("/token", tags=["public"])
+async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]) -> Token:
+    user = authenticate_user(form_data.username, form_data.password)
+    if not user:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password.",
+            headers={"WWW-Authenticate": "Bearer"},
         )
-    return {"access_token": user.username, "token_type": "bearer"}
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.username}, expires_delta=access_token_expires
+    )
+    return Token(access_token=access_token, token_type="bearer")
