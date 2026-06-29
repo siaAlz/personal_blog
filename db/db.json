@@ -12,7 +12,12 @@
         {
             "username": "siavash",
             "is_active": true,
-            "hashed_password": "$argon2id$v=19$m=65536,t=3,p=4$CNMBwHj33eZtH77Y63US6Q$23mzxuKSG+0F55OwVx5CqduKC5Bx1xI2s1Xt2GXbWDw"
+            "hashed_password": "$argon2id$v=19$m=65536,t=3,p=4$MBmKqPVt/UVwCQpVPOndYw$u4Fp6jC1xyfLr2v6+YkpPa32vavhW7vDCro3vjQoWvk"
+        },
+        {
+            "username": "siavash",
+            "is_active": true,
+            "hashed_password": "$argon2id$v=19$m=65536,t=3,p=4$1wabEaDk0AX1U6bTqw8Y8A$OoLoKd2WlNePL11Xi31XZqNDHzDDrirtAauSuLr1mso"
         }
     ]
 }

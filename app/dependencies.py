@@ -1,12 +1,14 @@
 import os
 from typing import Annotated
-from fastapi import HTTPException, status, Depends
-from fastapi.security import OAuth2PasswordBearer
-from utils import get_user
-from models import TokenData, UserBase
 
 import jwt
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
 from jwt.exceptions import InvalidTokenError
+
+from app.schemas.token import TokenData
+from app.schemas.user import UserBase
+from app.services.users import get_user
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALOGORITHM = os.getenv("ALOGORITHM")
@@ -14,7 +16,7 @@ ALOGORITHM = os.getenv("ALOGORITHM")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
-def get_urrent_user(token: Annotated[str, Depends((oauth2_scheme))]) -> UserBase:
+def get_current_user(token: Annotated[str, Depends((oauth2_scheme))]) -> UserBase:
 
     credential_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -40,7 +42,7 @@ def get_urrent_user(token: Annotated[str, Depends((oauth2_scheme))]) -> UserBase
 
 
 def get_current_active_user(
-    current_user: Annotated[UserBase, Depends(get_urrent_user)],
+    current_user: Annotated[UserBase, Depends(get_current_user)],
 ):
     if not current_user.is_active:
         raise HTTPException(
