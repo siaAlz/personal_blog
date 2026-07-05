@@ -1,13 +1,24 @@
-from app.schemas.article import ArticleBase, ArticleOut
+from collections.abc import Sequence
+import re
+
+from sqlalchemy import select
+from sqlalchemy.engine import result
+from sqlalchemy.orm import Session
+
+from app import models
+from app.routers import articles
+from app.schemas.article import ArticleCreate, ArticleResponse
 from app.db.db import initiate_db, load_db, save_db
 
 DB_PATH = initiate_db()
 db = load_db(DB_PATH)
 
 
-def load_articles() -> list[ArticleOut]:
-    articles = db["Articles"]
-    return [ArticleOut(**a) for a in articles]
+def load_articles(db: Session) -> Sequence[models.Article]:
+    result = db.execute(select(models.Article))
+    articles = result.scalars().all()
+    return articles
+    # return [ArticleBase(**a) for a in articles]
 
 
 def load_article(article_id: int) -> ArticleOut | None:
@@ -33,8 +44,8 @@ def create_article(article: ArticleBase):
     return new_article
 
 
-def load_articles_by_tag(tag: str) -> list[ArticleOut]:
-    articles = load_articles()
+def load_articles_by_tag(db: Session, tag: str) -> list[ArticleOut]:
+    articles = load_articles(db)
 
     articles_by_tag = [a for a in articles if tag in a.tags]
     return articles_by_tag
