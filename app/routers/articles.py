@@ -2,16 +2,16 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 
-from ..schemas.article import ArticleBase, ArticleOut
-from ..schemas.user import UserBase
-from ..services.articles import (
+from app.schemas.article import ArticleBase, ArticleOut
+from app.schemas.user import UserBase
+from app.services.articles import (
     create_article,
     load_article,
     load_articles,
     load_articles_by_tag,
     upload_article,
 )
-from ..dependencies import get_current_user, get_current_active_user
+from app.dependencies import get_current_user, get_current_active_user
 
 router = APIRouter(prefix="/articles", tags=["articles"])
 

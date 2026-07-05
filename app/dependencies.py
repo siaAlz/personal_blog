@@ -1,6 +1,6 @@
 import os
 from typing import Annotated
-
+from app.db.database import SessionLocal
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -11,9 +11,17 @@ from app.schemas.user import UserBase
 from app.services.users import get_user
 
 SECRET_KEY = os.getenv("SECRET_KEY")
-ALOGORITHM = os.getenv("ALOGORITHM")
+ALGORITHM = os.getenv("ALGORITHM")
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 
 def get_current_user(token: Annotated[str, Depends((oauth2_scheme))]) -> UserBase:
@@ -25,7 +33,7 @@ def get_current_user(token: Annotated[str, Depends((oauth2_scheme))]) -> UserBas
     )
 
     try:
-        payload = jwt.decode(token, SECRET_KEY, ALOGORITHM)
+        payload = jwt.decode(token, SECRET_KEY, ALGORITHM)
         username = payload.get("sub")
         if username is None:
             raise credential_exception

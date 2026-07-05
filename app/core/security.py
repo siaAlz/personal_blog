@@ -1,4 +1,4 @@
-# This module = Purely cryptographic
+# This module => Purely cryptographic
 #
 import os
 from datetime import datetime, timedelta, timezone
