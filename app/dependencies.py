@@ -1,13 +1,16 @@
 import os
 from typing import Annotated
-from app.db.database import SessionLocal
+
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jwt.exceptions import InvalidTokenError
+from sqlalchemy.orm import Session
 
+from app import models
+from app.db.database import SessionLocal
 from app.schemas.token import TokenData
-from app.schemas.user import UserBase
+from app.schemas.user import UserBase, UserResponse
 from app.services.users import get_user
 
 SECRET_KEY = os.getenv("SECRET_KEY")
@@ -20,11 +23,15 @@ def get_db():
     db = SessionLocal()
     try:
         yield db
+
     finally:
         db.close()
 
 
-def get_current_user(token: Annotated[str, Depends((oauth2_scheme))]) -> UserBase:
+def get_current_user(
+    token: Annotated[str, Depends((oauth2_scheme))],
+    db: Annotated[Session, Depends(get_db)],
+) -> models.User:
 
     credential_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -42,11 +49,11 @@ def get_current_user(token: Annotated[str, Depends((oauth2_scheme))]) -> UserBas
     except InvalidTokenError:
         raise credential_exception
 
-    user = get_user(token_data.username)
+    user = get_user(db, token_data.username)
 
     if not user:
         raise credential_exception
-    return UserBase(**user)
+    return user
 
 
 def get_current_active_user(

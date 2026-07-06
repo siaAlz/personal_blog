@@ -1,68 +1,65 @@
 from collections.abc import Sequence
-import re
 
+from fastapi import HTTPException, status
 from sqlalchemy import select
-from sqlalchemy.engine import result
 from sqlalchemy.orm import Session
 
 from app import models
-from app.routers import articles
 from app.schemas.article import ArticleCreate, ArticleResponse
-from app.db.db import initiate_db, load_db, save_db
-
-DB_PATH = initiate_db()
-db = load_db(DB_PATH)
 
 
 def load_articles(db: Session) -> Sequence[models.Article]:
-    result = db.execute(select(models.Article))
-    articles = result.scalars().all()
+    res = db.execute(select(models.Article))
+    articles = res.scalars().all()
     return articles
-    # return [ArticleBase(**a) for a in articles]
 
 
-def load_article(article_id: int) -> ArticleOut | None:
-    articles = load_articles()
-    for a in articles:
-        if a.id == article_id:
-            return a
+def load_article(db: Session, article_id: int) -> models.Article:
+    article = db.get(models.Article, article_id)
+    if article is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Article not found.")
+    return article
 
 
-def create_article(article: ArticleBase):
-    articles = load_articles()
-    articles.sort(key=lambda article: article.id)
-    last_id = articles[-1].id
+def load_articles_by_tag(db: Session, tag: str) -> Sequence[models.Article]:
+    res = db.execute(select(models.Article).where(models.Article.tags.contains([tag])))
+    articles = res.scalars().all()
+    return articles
 
-    new_article = ArticleOut(
-        **article.model_dump(),
-        id=last_id + 1,
+
+def create_article(db: Session, article: ArticleCreate, current_user: models.User):
+
+    new_article = models.Article(
+        title=article.title,
+        body=article.body,
+        tags=article.tags,
+        user_id=current_user.id,
     )
-
-    articles.append(new_article)
-    db["Articles"] = [a.model_dump() for a in articles]
-    save_db(db, DB_PATH)
+    db.add(new_article)
+    db.commit()
+    db.refresh(new_article)
     return new_article
 
 
-def load_articles_by_tag(db: Session, tag: str) -> list[ArticleOut]:
-    articles = load_articles(db)
+#
+def update_article_service(
+    db: Session,
+    article_id: int,
+    updated_article: ArticleCreate,
+    current_user: models.User,
+) -> models.Article:
 
-    articles_by_tag = [a for a in articles if tag in a.tags]
-    return articles_by_tag
+    article = db.get(models.Article, article_id)
 
+    if article is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Article not found.")
 
-def upload_article(article_id: int, updated_article: ArticleBase) -> ArticleOut | None:
-    articles = load_articles()
+    if article.author.id != current_user.id:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Access not granted.")
+    article.title = updated_article.title
+    article.tags = updated_article.tags
+    article.body = updated_article.body
 
-    for i, article in enumerate(articles):
-        if article.id == article_id:
-            articles[i] = ArticleOut(
-                id=articles[i].id,
-                **updated_article.model_dump(),
-                created_at=articles[i].created_at,
-            )
-
-            db["Articles"] = [a.model_dump() for a in articles]
-            save_db(db, DB_PATH)
-            return articles[i]
-    return None
+    db.commit()
+    db.refresh(article)
+    return article

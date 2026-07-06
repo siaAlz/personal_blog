@@ -15,7 +15,7 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(150), unique=True, nullable=False)
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
 
-    posts: Mapped[list[Article]] = relationship(back_populates="author")
+    articles: Mapped[list[Article]] = relationship(back_populates="author")
 
     image_file: Mapped[str | None] = mapped_column(
         String(200), nullable=True, default=None

@@ -9,12 +9,12 @@ Tag = Annotated[str, Field(min_length=3)]
 
 class ArticleBase(BaseModel):
     title: str = Field(min_length=3, max_length=50)
-    content: str
+    body: str
     tags: list[Tag] = Field(default_factory=list)
 
 
 class ArticleCreate(ArticleBase):
-    user_id: int  # Temporary?
+    pass
 
 
 class ArticleResponse(ArticleBase):
