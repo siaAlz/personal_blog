@@ -63,3 +63,13 @@ def update_article_service(
     db.commit()
     db.refresh(article)
     return article
+
+
+def delete_article_service(db: Session, article_id: int, current_user: models.User):
+    article = load_article(db, article_id)
+    if article.author.id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Access not granted."
+        )
+    db.delete(article)
+    db.commit()

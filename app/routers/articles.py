@@ -1,10 +1,13 @@
+from operator import mod
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from sqlalchemy.orm import Session
+from sqlalchemy.sql.functions import current_user
 
 from app import models
 from app.dependencies import get_current_active_user, get_current_user, get_db
+from app.schemas import article
 from app.schemas.article import ArticleCreate, ArticleResponse
 from app.services.articles import (
     create_article,
@@ -58,7 +61,7 @@ async def post_article(
 
 
 @router.put(
-    "/{article_id}",
+    "/update/{article_id}",
     response_model=ArticleResponse,
     status_code=status.HTTP_200_OK,
     summary="Update article.",
@@ -71,3 +74,12 @@ async def update_article(
 ):
 
     return update_article_service(db, article_id, updated_article, current_user)
+
+
+@router.delete("/delete/{article_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_article(
+    db: Annotated[Session, Depends(get_db)],
+    article_id: Annotated[int, Path(ge=1)],
+    current_user: Annotated[models.User, Depends(get_current_user)],
+):
+    return delete_article_service(db, article_id, current_user)
